@@ -2,9 +2,10 @@ import axios from "axios";
 
 // Fallback to local Nest server if env is missing
 const fallbackURL = "http://localhost:8000";
+const baseURL = process.env.NEXT_PUBLIC_API_URL || fallbackURL;
 
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || fallbackURL,
+  baseURL,
   timeout: 10000,
   withCredentials: false,
 });
