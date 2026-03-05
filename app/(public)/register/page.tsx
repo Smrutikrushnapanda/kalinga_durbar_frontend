@@ -293,11 +293,10 @@ export default function RegistrationPage() {
     });
   }, [form.accompanyingPersonsCount]);
 
-  // Auto-set accompanying persons to 2 for specified registration types
+  // Auto-set accompanying persons to 1 when a registration type is selected
   useEffect(() => {
-    const requiresTwo = ["single", "single_twin", "tangent_twin", "couple"];
-    if (requiresTwo.includes(form.registrationType) && form.accompanyingPersonsCount !== 2) {
-      set("accompanyingPersonsCount", 2);
+    if (form.registrationType && form.accompanyingPersonsCount === 0) {
+      set("accompanyingPersonsCount", 1);
     }
   }, [form.registrationType]);
 
@@ -371,9 +370,25 @@ export default function RegistrationPage() {
 
       await submitRegistration(payload);
       setSubmitted(true);
-    } catch (e) {
+    } catch (e: unknown) {
       console.error(e);
-      setNotification({ type: "error", message: "Submission failed. Please try again." });
+      const axiosError = e as { response?: { status?: number; data?: { message?: string } } };
+      const status = axiosError?.response?.status;
+      const serverMessage = axiosError?.response?.data?.message ?? "";
+
+      if (status === 409 || (typeof serverMessage === "string" && serverMessage.toLowerCase().includes("already exists"))) {
+        // Duplicate email — navigate back to step 0 and highlight the field
+        setErrors({ email: "This email is already registered. Please use a different email." });
+        setStep(0);
+        setNotification({ type: "error", message: "This email is already registered. Please go back and use a different email." });
+      } else if (status === 400) {
+        const msg = typeof serverMessage === "string" && serverMessage
+          ? serverMessage
+          : "Some fields are invalid. Please review your details.";
+        setNotification({ type: "error", message: msg });
+      } else {
+        setNotification({ type: "error", message: "Submission failed. Please try again." });
+      }
     } finally {
       setSubmitting(false);
     }
