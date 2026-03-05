@@ -27,12 +27,14 @@ export type AccompanyingPersonPayload = {
   aadhar: string;
   phone: string;
   gender: string;
+  relation: string;
 };
 
 export type RegistrationPayload = {
   fullName: string;
   mobile: string;
   email: string;
+  aadhar: string;
   organization: string;
   city: string;
   state: string;

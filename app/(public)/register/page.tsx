@@ -55,6 +55,7 @@ type AccompanyingPerson = {
   aadhar: string;
   phone: string;
   gender: string;
+  relation: string;
 };
 
 type RegistrationForm = {
@@ -62,6 +63,7 @@ type RegistrationForm = {
   fullName: string;
   mobile: string;
   email: string;
+  aadhar: string;
   organization: string;
   city: string;
   state: string;
@@ -123,12 +125,14 @@ const emptyPerson = (): AccompanyingPerson => ({
   aadhar: "",
   phone: "",
   gender: "",
+  relation: "",
 });
 
 const emptyForm = (): RegistrationForm => ({
   fullName: "",
   mobile: "",
   email: "",
+  aadhar: "",
   organization: "",
   city: "",
   state: "",
@@ -272,6 +276,7 @@ export default function RegistrationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [notification, setNotification] = useState<{ type: "error" | "success"; message: string } | null>(null);
 
   const STEPS = ["Basic Info", "Event Details", "Pre Tours", "Review & Pay"];
 
@@ -287,6 +292,14 @@ export default function RegistrationPage() {
       return { ...prev, accompanyingPersons: current.slice(0, count) };
     });
   }, [form.accompanyingPersonsCount]);
+
+  // Auto-set accompanying persons to 2 for specified registration types
+  useEffect(() => {
+    const requiresTwo = ["single", "single_twin", "tangent_twin", "couple"];
+    if (requiresTwo.includes(form.registrationType) && form.accompanyingPersonsCount !== 2) {
+      set("accompanyingPersonsCount", 2);
+    }
+  }, [form.registrationType]);
 
   const set = <K extends keyof RegistrationForm>(key: K, val: RegistrationForm[K]) => {
     setForm((prev) => ({ ...prev, [key]: val }));
@@ -310,10 +323,15 @@ export default function RegistrationPage() {
 
   const validate = (s: number): boolean => {
     const e: Record<string, string> = {};
+    const aadharRegex = /^[0-9]{12}$/;
+    const phoneRegex = /^[0-9]{10}$/;
     if (s === 0) {
       if (!form.fullName.trim()) e.fullName = "Required";
       if (!form.mobile.trim()) e.mobile = "Required";
+      else if (!phoneRegex.test(form.mobile)) e.mobile = "Enter 10 digits";
       if (!form.email.trim()) e.email = "Required";
+      if (!form.aadhar.trim()) e.aadhar = "Required";
+      else if (!aadharRegex.test(form.aadhar)) e.aadhar = "Enter 12 digits";
       if (!form.organization.trim()) e.organization = "Required";
       if (!form.city.trim()) e.city = "Required";
       if (!form.state.trim()) e.state = "Required";
@@ -337,6 +355,7 @@ export default function RegistrationPage() {
   const handleSubmit = async () => {
     if (!validate(step)) return;
     setSubmitting(true);
+    setNotification(null);
     try {
       const payload: RegistrationPayload = {
         ...form,
@@ -354,7 +373,7 @@ export default function RegistrationPage() {
       setSubmitted(true);
     } catch (e) {
       console.error(e);
-      alert("Submission failed. Please try again.");
+      setNotification({ type: "error", message: "Submission failed. Please try again." });
     } finally {
       setSubmitting(false);
     }
@@ -414,7 +433,7 @@ export default function RegistrationPage() {
         </svg>
 
         <div className="relative z-10 flex flex-col items-center gap-4 px-4 py-6 sm:py-8 lg:py-10">
-          <div className="flex flex-wrap items-center justify-center sm:justify-between gap-3 sm:gap-4 w-full max-w-5xl">
+          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 w-full max-w-4xl">
             <Image
               src="/images/LOGO-Kalingadarbar.png"
               alt="Kalinga Durbar Logo"
@@ -456,6 +475,18 @@ export default function RegistrationPage() {
           </div>
 
           <div className="px-6 sm:px-8 pt-8 pb-6">
+            {notification && (
+              <div
+                className={`mb-4 rounded-xl px-4 py-3 text-sm font-semibold ${
+                  notification.type === "error"
+                    ? "bg-rose-50 text-rose-700 border border-rose-200"
+                    : "bg-green-50 text-green-700 border border-green-200"
+                }`}
+              >
+                {notification.message}
+              </div>
+            )}
+
             <StepIndicator steps={STEPS} current={step} />
 
             {/* ── STEP 0: Basic Info ── */}
@@ -482,7 +513,9 @@ export default function RegistrationPage() {
                       type="tel"
                       placeholder="+91 98765 43210"
                       value={form.mobile}
-                      onChange={(e) => set("mobile", e.target.value)}
+                      onChange={(e) => set("mobile", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                      pattern="[0-9]{10}"
+                      maxLength={10}
                     />
                     {errors.mobile && <p className="text-rose-500 text-xs mt-1">{errors.mobile}</p>}
                   </div>
@@ -498,12 +531,26 @@ export default function RegistrationPage() {
                     />
                     {errors.email && <p className="text-rose-500 text-xs mt-1">{errors.email}</p>}
                   </div>
+                  <div>
+                    <Input
+                      label="Aadhaar Number"
+                      id="aadhar"
+                      required
+                      inputMode="numeric"
+                      pattern="[0-9]{12}"
+                      maxLength={12}
+                      placeholder="12-digit Aadhaar"
+                      value={form.aadhar}
+                      onChange={(e) => set("aadhar", e.target.value.replace(/\D/g, "").slice(0, 12))}
+                    />
+                    {errors.aadhar && <p className="text-rose-500 text-xs mt-1">{errors.aadhar}</p>}
+                  </div>
                   <div className="sm:col-span-2">
                     <Input
-                      label="Organization / Chapter Name"
+                      label="Organization Name"
                       id="organization"
                       required
-                      placeholder="41 Club, Chapter Name…"
+                      placeholder="Organization name"
                       value={form.organization}
                       onChange={(e) => set("organization", e.target.value)}
                     />
@@ -601,7 +648,7 @@ export default function RegistrationPage() {
                     <select
                       value={form.accompanyingPersonsCount}
                       onChange={(e) => set("accompanyingPersonsCount", parseInt(e.target.value))}
-                      className="w-full rounded-xl border-2 border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none focus:border-amber-400 focus:bg-white transition-all"
+                      className="w-full rounded-xl border-2 border-amber-300 bg-white px-4 py-3 text-sm font-semibold text-stone-900 outline-none focus:border-amber-500 focus:bg-white shadow-sm transition-all"
                     >
                       {Array.from({ length: config.formFields.maxAccompanyingPersons + 1 }, (_, i) => (
                         <option key={i} value={i}>{i === 0 ? "None" : i}</option>
@@ -644,6 +691,20 @@ export default function RegistrationPage() {
                                 options={[
                                   { value: "male", label: "Male" },
                                   { value: "female", label: "Female" },
+                                  { value: "other", label: "Other" },
+                                ]}
+                              />
+                              <Select
+                                label="Relation"
+                                id={`p${i}_relation`}
+                                value={p.relation}
+                                onChange={(v) => updatePerson(i, "relation", v)}
+                                options={[
+                                  { value: "spouse", label: "Spouse" },
+                                  { value: "child", label: "Child" },
+                                  { value: "parent", label: "Parent" },
+                                  { value: "friend", label: "Friend" },
+                                  { value: "colleague", label: "Colleague" },
                                   { value: "other", label: "Other" },
                                 ]}
                               />
