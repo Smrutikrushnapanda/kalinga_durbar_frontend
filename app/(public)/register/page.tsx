@@ -54,7 +54,6 @@ type AccompanyingPerson = {
   fullName: string;
   aadhar: string;
   phone: string;
-  gender: string;
   relation: string;
 };
 
@@ -64,10 +63,10 @@ type RegistrationForm = {
   mobile: string;
   email: string;
   aadhar: string;
-  organization: string;
+  clubNumber: string;
+  areaNumber: string;
   city: string;
   state: string;
-  gender: string;
   // Event specific
   registrationType: string;
   accompanyingPersonsCount: number;
@@ -97,10 +96,10 @@ const DEFAULT_EVENT_CONFIG: EventConfig = {
     { id: "tangent_twin", label: "Tangent (Twin Sharing)", price: 25500 },
   ],
   preTours: [
-    { id: "jagannath", name: "Lord Jagannath Temple Puri" },
-    { id: "konark", name: "Sun Temple Konark" },
-    { id: "chilika", name: "Chilika Lake" },
-    { id: "bhitarkanika", name: "Bhitarkanika Wildlife Sanctuary" },
+    { id: "jagannath", name: "Lord Jagannath Temple Puri", price: 1500 },
+    { id: "konark", name: "Sun Temple Konark", price: 1800 },
+    { id: "chilika", name: "Chilika Lake", price: 2000 },
+    { id: "bhitarkanika", name: "Bhitarkanika Wildlife Sanctuary", price: 2200 },
   ],
   dietaryOptions: ["Veg", "Non-Veg", "Jain", "Other"],
   formFields: {
@@ -124,7 +123,6 @@ const emptyPerson = (): AccompanyingPerson => ({
   fullName: "",
   aadhar: "",
   phone: "",
-  gender: "",
   relation: "",
 });
 
@@ -133,10 +131,10 @@ const emptyForm = (): RegistrationForm => ({
   mobile: "",
   email: "",
   aadhar: "",
-  organization: "",
+  clubNumber: "",
+  areaNumber: "",
   city: "",
   state: "",
-  gender: "",
   registrationType: "",
   accompanyingPersonsCount: 0,
   accompanyingPersons: [],
@@ -318,6 +316,11 @@ export default function RegistrationPage() {
       persons[i] = { ...persons[i], [field]: val };
       return { ...prev, accompanyingPersons: persons };
     });
+    setErrors((prev) => {
+      const n = { ...prev };
+      delete n[`accompanyingPersons.${i}.${field}`];
+      return n;
+    });
   };
 
   const validate = (s: number): boolean => {
@@ -331,14 +334,26 @@ export default function RegistrationPage() {
       if (!form.email.trim()) e.email = "Required";
       if (!form.aadhar.trim()) e.aadhar = "Required";
       else if (!aadharRegex.test(form.aadhar)) e.aadhar = "Enter 12 digits";
-      if (!form.organization.trim()) e.organization = "Required";
+      if (!form.clubNumber.trim()) e.clubNumber = "Required";
+      if (!form.areaNumber.trim()) e.areaNumber = "Required";
       if (!form.city.trim()) e.city = "Required";
       if (!form.state.trim()) e.state = "Required";
-      if (!form.gender) e.gender = "Required";
     }
     if (s === 1) {
       if (!form.registrationType) e.registrationType = "Required";
       if (!form.dietary && config.formFields.showDietary) e.dietary = "Required";
+      if (form.accompanyingPersonsCount > 0) {
+        form.accompanyingPersons.forEach((person, i) => {
+          const personAadhar = person.aadhar.trim();
+          const personPhone = person.phone.trim();
+
+          if (!personAadhar) e[`accompanyingPersons.${i}.aadhar`] = "Required";
+          else if (!aadharRegex.test(personAadhar)) e[`accompanyingPersons.${i}.aadhar`] = "Enter 12 digits";
+
+          if (!personPhone) e[`accompanyingPersons.${i}.phone`] = "Required";
+          else if (!phoneRegex.test(personPhone)) e[`accompanyingPersons.${i}.phone`] = "Enter 10 digits";
+        });
+      }
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -356,10 +371,20 @@ export default function RegistrationPage() {
     setSubmitting(true);
     setNotification(null);
     try {
+      const accompanyingPersonsPayload =
+        form.accompanyingPersonsCount > 0
+          ? form.accompanyingPersons.map((person) => ({
+              ...person,
+              gender: "other",
+            }))
+          : [];
+
       const payload: RegistrationPayload = {
         ...form,
-        accompanyingPersons:
-          form.accompanyingPersonsCount > 0 ? form.accompanyingPersons : [],
+        // Backward-compatible fields for old deployed API validation.
+        organization: `Club ${form.clubNumber}`,
+        gender: "other",
+        accompanyingPersons: accompanyingPersonsPayload,
         arrivalDate: form.arrivalDate || undefined,
         arrivalTime: form.arrivalTime || undefined,
         flightDetails: form.flightDetails || undefined,
@@ -560,16 +585,31 @@ export default function RegistrationPage() {
                     />
                     {errors.aadhar && <p className="text-rose-500 text-xs mt-1">{errors.aadhar}</p>}
                   </div>
-                  <div className="sm:col-span-2">
+                  <div>
                     <Input
-                      label="Organization Name"
-                      id="organization"
+                      label="Club Number"
+                      id="clubNumber"
                       required
-                      placeholder="Organization name"
-                      value={form.organization}
-                      onChange={(e) => set("organization", e.target.value)}
+                      inputMode="numeric"
+                      pattern="[0-9]+"
+                      placeholder="Enter club number"
+                      value={form.clubNumber}
+                      onChange={(e) => set("clubNumber", e.target.value.replace(/\D/g, ""))}
                     />
-                    {errors.organization && <p className="text-rose-500 text-xs mt-1">{errors.organization}</p>}
+                    {errors.clubNumber && <p className="text-rose-500 text-xs mt-1">{errors.clubNumber}</p>}
+                  </div>
+                  <div>
+                    <Input
+                      label="Area Number"
+                      id="areaNumber"
+                      required
+                      inputMode="numeric"
+                      pattern="[0-9]+"
+                      placeholder="Enter area number"
+                      value={form.areaNumber}
+                      onChange={(e) => set("areaNumber", e.target.value.replace(/\D/g, ""))}
+                    />
+                    {errors.areaNumber && <p className="text-rose-500 text-xs mt-1">{errors.areaNumber}</p>}
                   </div>
                   <div>
                     <Input
@@ -582,7 +622,7 @@ export default function RegistrationPage() {
                     />
                     {errors.city && <p className="text-rose-500 text-xs mt-1">{errors.city}</p>}
                   </div>
-                  <div>
+                  <div className="sm:col-span-2">
                     <Input
                       label="State"
                       id="state"
@@ -592,21 +632,6 @@ export default function RegistrationPage() {
                       onChange={(e) => set("state", e.target.value)}
                     />
                     {errors.state && <p className="text-rose-500 text-xs mt-1">{errors.state}</p>}
-                  </div>
-                  <div>
-                    <Select
-                      label="Gender"
-                      id="gender"
-                      required
-                      value={form.gender}
-                      onChange={(v) => set("gender", v)}
-                      options={[
-                        { value: "male", label: "Male" },
-                        { value: "female", label: "Female" },
-                        { value: "other", label: "Other" },
-                      ]}
-                    />
-                    {errors.gender && <p className="text-rose-500 text-xs mt-1">{errors.gender}</p>}
                   </div>
                 </div>
               </div>
@@ -683,32 +708,37 @@ export default function RegistrationPage() {
                                 value={p.fullName}
                                 onChange={(e) => updatePerson(i, "fullName", e.target.value)}
                               />
-                              <Input
-                                label="Aadhaar Number"
-                                id={`p${i}_aadhar`}
-                                placeholder="XXXX XXXX XXXX"
-                                value={p.aadhar}
-                                onChange={(e) => updatePerson(i, "aadhar", e.target.value)}
-                              />
-                              <Input
-                                label="Phone"
-                                id={`p${i}_phone`}
-                                type="tel"
-                                placeholder="+91…"
-                                value={p.phone}
-                                onChange={(e) => updatePerson(i, "phone", e.target.value)}
-                              />
-                              <Select
-                                label="Gender"
-                                id={`p${i}_gender`}
-                                value={p.gender}
-                                onChange={(v) => updatePerson(i, "gender", v)}
-                                options={[
-                                  { value: "male", label: "Male" },
-                                  { value: "female", label: "Female" },
-                                  { value: "other", label: "Other" },
-                                ]}
-                              />
+                              <div>
+                                <Input
+                                  label="Aadhaar Number"
+                                  id={`p${i}_aadhar`}
+                                  inputMode="numeric"
+                                  pattern="[0-9]{12}"
+                                  maxLength={12}
+                                  placeholder="12-digit Aadhaar"
+                                  value={p.aadhar}
+                                  onChange={(e) => updatePerson(i, "aadhar", e.target.value.replace(/\D/g, "").slice(0, 12))}
+                                />
+                                {errors[`accompanyingPersons.${i}.aadhar`] && (
+                                  <p className="text-rose-500 text-xs mt-1">{errors[`accompanyingPersons.${i}.aadhar`]}</p>
+                                )}
+                              </div>
+                              <div>
+                                <Input
+                                  label="Phone"
+                                  id={`p${i}_phone`}
+                                  type="tel"
+                                  inputMode="numeric"
+                                  pattern="[0-9]{10}"
+                                  maxLength={10}
+                                  placeholder="10-digit phone number"
+                                  value={p.phone}
+                                  onChange={(e) => updatePerson(i, "phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                                />
+                                {errors[`accompanyingPersons.${i}.phone`] && (
+                                  <p className="text-rose-500 text-xs mt-1">{errors[`accompanyingPersons.${i}.phone`]}</p>
+                                )}
+                              </div>
                               <Select
                                 label="Relation"
                                 id={`p${i}_relation`}
@@ -875,7 +905,9 @@ export default function RegistrationPage() {
                     <p className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-2">Registrant</p>
                     <p className="font-bold text-stone-900">{form.fullName}</p>
                     <p className="text-stone-500 text-sm">{form.email} · {form.mobile}</p>
-                    <p className="text-stone-500 text-sm">{form.organization} · {form.city}, {form.state}</p>
+                    <p className="text-stone-500 text-sm">
+                      Club #{form.clubNumber} · Area #{form.areaNumber} · {form.city}, {form.state}
+                    </p>
                   </div>
 
                   <div className="px-5 py-4">

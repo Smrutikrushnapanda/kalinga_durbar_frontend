@@ -26,7 +26,7 @@ export type AccompanyingPersonPayload = {
   fullName: string;
   aadhar: string;
   phone: string;
-  gender: string;
+  gender?: string;
   relation: string;
 };
 
@@ -35,10 +35,12 @@ export type RegistrationPayload = {
   mobile: string;
   email: string;
   aadhar: string;
-  organization: string;
+  organization?: string;
+  clubNumber: string;
+  areaNumber: string;
   city: string;
   state: string;
-  gender: string;
+  gender?: string;
   registrationType: string;
   accompanyingPersonsCount: number;
   accompanyingPersons?: AccompanyingPersonPayload[];
