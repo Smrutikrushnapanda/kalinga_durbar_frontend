@@ -1,8 +1,7 @@
 import axios from "axios";
 
-// Fallback to local Nest server if env is missing
-const fallbackURL = "http://localhost:8000";
-const baseURL = process.env.NEXT_PUBLIC_API_URL || fallbackURL;
+// Use Next.js same-origin API proxy to avoid browser CORS/network issues.
+const baseURL = "/api";
 
 export const api = axios.create({
   baseURL,
@@ -57,3 +56,8 @@ export type RegistrationPayload = {
 
 export const submitRegistration = (payload: RegistrationPayload) =>
   api.post("/registrations", payload);
+
+export const fetchRegistrations = () => api.get("/registrations");
+
+export const fetchRegistrationById = (id: string) =>
+  api.get(`/registrations/${id}`);
